@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8.4)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules")
-project(SOEM C)
+project(SOEM C CXX)
 
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   # Default to installing in SOEM source directory
@@ -52,7 +52,7 @@ endif()
 
 message("OS is ${OS}")
 
-file(GLOB SOEM_SOURCES soem/*.c)
+file(GLOB SOEM_SOURCES soem/*.c soem/*.cpp)
 file(GLOB OSAL_SOURCES osal/${OS}/*.c)
 file(GLOB OSHW_SOURCES oshw/${OS}/*.c)
 
@@ -85,4 +85,7 @@ if(BUILD_TESTS)
   add_subdirectory(test/linux/slaveinfo)
   add_subdirectory(test/linux/eepromtool)
   add_subdirectory(test/linux/simple_test)
+  add_subdirectory(test/linux/custom_test)
+  add_subdirectory(test/linux/red_test)
+  add_subdirectory(test/linux/ecat_comm_test)
 endif()
