@@ -1,27 +1,33 @@
 #pragma once
 #include "ethercat.h"
+#include <iostream>
 
 namespace ecat_comm 
 {
-    extern bool operational_state_reached;
-    
-    OSAL_THREAD_FUNC_RT ecatthread(void *ptr);
-    
+    template <typename T>
     class ecatComm
     {
     public:
+        static int dorun;
+        static int64 toff,gl_delta;
+        static volatile int wkc;
+        static uint8 *digout;
+        static boolean inOP;
+        static int expectedWKC;
+        static uint8 currentgroup;
+        static boolean needlf;
         char IOmap[4096];
-        int expectedWKC;
-        boolean inOP;
-        bool all_good = true;
-        volatile int wkc;
-        uint8 currentgroup = 0;
-        boolean needlf;
+        pthread_t thread1, thread2;
         
-        ecatComm(char *ifname);
-        void ecat_setup(char *ifname);
-        void ecat_update();
-        virtual void ecat_read_write_PDO();
-        void ecat_check();
+        ecatComm();
+        ecatComm(char *ifname, int ctime);
+        ~ecatComm();
+        void ecatsetup(char *ifname);
+        static OSAL_THREAD_FUNC_RT ecatthread(void *ptr);
+        static OSAL_THREAD_FUNC ecatcheck(void *ptr);
+        static void add_timespec(struct timespec *ts, int64 addtime);
+        static void ec_sync(int64 reftime, int64 cycletime , int64 *offsettime);
     };
 }
+
+#include "ecat_comm.tpp"

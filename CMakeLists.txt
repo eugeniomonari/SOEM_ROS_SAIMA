@@ -61,6 +61,7 @@ endif()
 # export dependencies and targets to catkin
 # explicitely export pthread, as stated above
 catkin_package(
+  INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/SOEM/soem
   CFG_EXTRAS soem-ros-extras.cmake
   LIBRARIES soem ${PTHREAD_LIB}
 )
