@@ -19,9 +19,8 @@ namespace ecat_comm
         char IOmap[4096];
         pthread_t thread1, thread2;
         
-        ecatComm();
-        ecatComm(char *ifname, int ctime);
         ~ecatComm();
+        void ecatinit(char *ifname, int ctime);
         void ecatsetup(char *ifname);
         static OSAL_THREAD_FUNC_RT ecatthread(void *ptr);
         static OSAL_THREAD_FUNC ecatcheck(void *ptr);

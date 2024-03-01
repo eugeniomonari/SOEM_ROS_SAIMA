@@ -179,7 +179,7 @@ namespace ecat_comm
     {
         int cnt, i, j, oloop, iloop;
 
-        printf("Starting Redundant test\n");
+        printf("Starting EtherCAT communication\n");
 
         /* initialise SOEM, bind socket to ifname */
         //   if (ec_init_redundant(ifname, ifname2))
@@ -252,14 +252,9 @@ namespace ecat_comm
             printf("No socket connection on %s\nExcecute as root\n",ifname);
         }
     }
-    
+
     template<typename T>
-    ecatComm<T>::ecatComm()
-    {
-    }
-    
-    template<typename T>
-    ecatComm<T>::ecatComm(char* ifname, int ctime)
+    void ecatComm<T>::ecatinit(char *ifname, int ctime)
     {
         dorun = 0;
         osal_thread_create_rt(&thread1, stack64k * 2, (void*) &ecatComm::ecatthread, (void*) &ctime);
