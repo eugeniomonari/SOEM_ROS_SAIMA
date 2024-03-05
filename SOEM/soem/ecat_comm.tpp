@@ -1,6 +1,7 @@
 // #include "ecat_comm.h"
 #include "ethercat.h"
 #include <iostream>
+#include <tuple>
 
 #define stack64k (64 * 1024)
 #define EC_TIMEOUTMON 500
@@ -8,26 +9,22 @@
 
 namespace ecat_comm
 {
-    template<typename T>
-    int ecatComm<T>::dorun = 0;
-    template<typename T>
-    uint8 *ecatComm<T>::digout = 0;
-    template<typename T>
-    uint8 ecatComm<T>::currentgroup = 0;
-    template<typename T>
-    int64 ecatComm<T>::toff;
-    template<typename T>
-    int64 ecatComm<T>::gl_delta;
-    template<typename T>
-    volatile int ecatComm<T>::wkc;
-    template<typename T>
-    boolean ecatComm<T>::inOP;
-    template<typename T>
-    int ecatComm<T>::expectedWKC;
-    template<typename T>
-    boolean ecatComm<T>::needlf;
-    template<typename T>
-    OSAL_THREAD_FUNC_RT ecatComm<T>::ecatthread(void *ptr)
+    template<typename input_structs, typename output_structs>
+    OSAL_THREAD_FUNC call_ecatthread(void* ptr)
+    {
+        auto foo = static_cast<ecatComm<input_structs,output_structs>*>(ptr);
+        foo->ecatthread();
+    }
+    
+    template<typename input_structs, typename output_structs>
+    void call_ecatcheck(void* ptr)
+    {
+        auto foo = static_cast<ecatComm<input_structs,output_structs>*>(ptr);
+        foo->ecatcheck();
+    }
+    
+    template<typename input_structs, typename output_structs>
+    OSAL_THREAD_FUNC_RT ecatComm<input_structs,output_structs>::ecatthread()
     {
         struct timespec   ts, tleft;
         int ht;
@@ -36,15 +33,14 @@ namespace ecat_comm
         clock_gettime(CLOCK_MONOTONIC, &ts);
         ht = (ts.tv_nsec / 1000000) + 1; /* round to nearest ms */
         ts.tv_nsec = ht * 1000000;
-        cycletime = *(int*)ptr * 1000; /* cycletime in ns */
+        cycletime = m_ctime * 1000; /* cycletime in ns */
         toff = 0;
         dorun = 0;
+        
         ec_send_processdata();
         while(1)
         {
-            /* calculate next cycle start */
             add_timespec(&ts, cycletime + toff);
-            /* wait to cycle start */
             clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &ts, &tleft);
             if (dorun>0)
             {
@@ -52,7 +48,10 @@ namespace ecat_comm
 
                 dorun++;
                 
-                T::ecat_read_write_PDO();
+                for (size_t i = 0; i < slaves_number; i++)
+                {
+                    read_write_PDO();
+                }
                 
                 /* if we have some digital output, cycle */
                 if( digout ) *digout = (uint8) ((dorun / 16) & 0xff);
@@ -67,8 +66,24 @@ namespace ecat_comm
         }
     }
     
-    template<typename T>
-    void ecatComm<T>::add_timespec(struct timespec *ts, int64 addtime)
+    template<typename input_structs, typename output_structs>
+    template<size_t I>
+    void ecatComm<input_structs,output_structs>::read_write_PDO()
+    {
+        if constexpr (I < std::tuple_size<input_structs>::value)
+        {
+            typename std::tuple_element<I,input_structs>::type* ith_input;
+            ith_input = (typename std::tuple_element<I,input_structs>::type*) ec_slave[m_slaves[I]].inputs;
+            std::get<I>(inputs) = *ith_input;
+            typename std::tuple_element<I,output_structs>::type* ith_output;
+            ith_output = (typename std::tuple_element<I,output_structs>::type*) ec_slave[m_slaves[I]].outputs;
+            *ith_output = std::get<I>(outputs);
+            read_write_PDO<I + 1>();
+        }
+    }
+    
+    template<typename input_structs, typename output_structs>
+    void ecatComm<input_structs,output_structs>::add_timespec(struct timespec *ts, int64 addtime)
     {
         int64 sec, nsec;
         nsec = addtime % NSEC_PER_SEC;
@@ -83,8 +98,8 @@ namespace ecat_comm
         }
     }
     
-    template<typename T>
-    void ecatComm<T>::ec_sync(int64 reftime, int64 cycletime , int64 *offsettime)
+    template<typename input_structs, typename output_structs>
+    void ecatComm<input_structs,output_structs>::ec_sync(int64 reftime, int64 cycletime , int64 *offsettime)
     {
         static int64 integral = 0;
         int64 delta;
@@ -97,8 +112,8 @@ namespace ecat_comm
         gl_delta = delta;
     }
     
-    template<typename T>
-    OSAL_THREAD_FUNC ecatComm<T>::ecatcheck(void *ptr)
+    template<typename input_structs, typename output_structs>
+    OSAL_THREAD_FUNC ecatComm<input_structs,output_structs>::ecatcheck()
         {
             int slave;
 
@@ -174,15 +189,14 @@ namespace ecat_comm
         }
     }
     
-    template<typename T>
-    void ecatComm<T>::ecatsetup(char *ifname)
+    template<typename input_structs, typename output_structs>
+    void ecatComm<input_structs,output_structs>::ecatsetup(char *ifname)
     {
         int cnt, i, j, oloop, iloop;
 
         printf("Starting EtherCAT communication\n");
 
         /* initialise SOEM, bind socket to ifname */
-        //   if (ec_init_redundant(ifname, ifname2))
         if (ec_init(ifname))
         {
             printf("ec_init on %s succeeded.\n",ifname);
@@ -253,17 +267,23 @@ namespace ecat_comm
         }
     }
 
-    template<typename T>
-    void ecatComm<T>::ecatinit(char *ifname, int ctime)
+    template<typename input_structs, typename output_structs>
+    void ecatComm<input_structs,output_structs>::ecatinit(int slaves[], char *ifname, int ctime)
     {
         dorun = 0;
-        osal_thread_create_rt(&thread1, stack64k * 2, (void*) &ecatComm::ecatthread, (void*) &ctime);
-        osal_thread_create(&thread2, stack64k * 4, (void*) &ecatComm::ecatcheck, NULL);
+        slaves_number = sizeof(slaves)/sizeof(slaves[0]);
+        for (int i = 0; i < slaves_number; i++)
+        {
+            m_slaves.push_back(slaves[i]);
+        }
+        m_ctime = ctime;
+        osal_thread_create_rt(&thread1, stack64k * 2, (void*) &call_ecatthread<input_structs,output_structs>, this);
+        osal_thread_create(&thread2, stack64k * 4, (void*) &call_ecatcheck<input_structs,output_structs>, this);
         ecatsetup(ifname);
     }
     
-    template<typename T>
-    ecatComm<T>::~ecatComm()
+    template<typename input_structs, typename output_structs>
+    ecatComm<input_structs,output_structs>::~ecatComm()
     {
         ec_close();
     }

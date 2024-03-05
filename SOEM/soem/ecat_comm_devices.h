@@ -22,9 +22,5 @@ namespace ecat_comm
         uint32_t Control1;
         uint32_t Control2;
     } out_ATIAxiaFTSensort;
-    
-    in_ATIAxiaFTSensort read_ATIAxiaFTSensor(int slave_number);
-    
-    void write_ATIAxiaFTSensor(int slave_number, int set_bias, int clear_bias, int filter, int calibration, int sample_rate);
 }
 
