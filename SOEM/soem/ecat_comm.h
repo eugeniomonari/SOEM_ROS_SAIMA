@@ -24,6 +24,7 @@ namespace ecat_comm
         input_structs inputs;
         output_structs outputs;
         int m_ctime;
+        boolean error = FALSE;
         
         ~ecatComm();
         void ecatinit(int slaves[], char *ifname, int ctime);

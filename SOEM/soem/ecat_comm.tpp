@@ -126,6 +126,8 @@ namespace ecat_comm
                 needlf = FALSE;
                 printf("\n");
                 }
+                error = TRUE;
+                std::cout << "EtherCAT communication in error" << std::endl;
                 /* one ore more slaves are not responding */
                 ec_group[currentgroup].docheckstate = FALSE;
                 ec_readstate();
@@ -244,6 +246,8 @@ namespace ecat_comm
                 }
                 else
                 {
+                    error = TRUE;
+                    std::cout << "EtherCAT communication in error" << std::endl;
                     printf("Not all slaves reached operational state.\n");
                     ec_readstate();
                     for(i = 1; i<=ec_slavecount ; i++)
