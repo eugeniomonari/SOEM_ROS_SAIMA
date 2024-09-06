@@ -166,7 +166,10 @@ int ecx_setupnic(ecx_portt *port, const char *ifname, int secondary)
    sll.sll_family = AF_PACKET;
    sll.sll_ifindex = ifindex;
    sll.sll_protocol = htons(ETH_P_ECAT);
-   r = bind(*psock, (struct sockaddr *)&sll, sizeof(sll));
+   int bind_result = bind(*psock, (struct sockaddr *)&sll, sizeof(sll));
+   if (bind_result < 0) {
+      r = bind_result;
+   }
    /* setup ethernet headers in tx buffers so we don't have to repeat it */
    for (i = 0; i < EC_MAXBUF; i++)
    {
